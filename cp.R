@@ -59,26 +59,29 @@ readCsv <- function(pathToFile, headerFlag=TRUE, naStrings=c("NA")) {
 ## G E T # S O U R C E #####################################
 ############################################################
 downloadFile(downloadUrl, trainingDataFile)
-downloadFile(downloadUrl, testingDataFile)
+# downloadFile(downloadUrl, testingDataFile) # Not required
 
 ############################################################
 ## P A R S I N G ###########################################
 ############################################################
 naStrings <- c("NA", "#DIV/0!", " ", "")
 trainingDataFrame <- readCsv(trainingDataFile, TRUE, naStrings)
-testingDataFrame <- readCsv(testingDataFile, TRUE, naStrings)
+# testingDataFrame <- readCsv(testingDataFile, TRUE, naStrings)
 
 trainingDataFrame_ <- purgeNAColumns(trainingDataFrame)
-testingDataFrame_ <- purgeNAColumns(testingDataFrame)
+# testingDataFrame_ <- purgeNAColumns(testingDataFrame)
 
 obviousReducibleColumns <- c("X", "user_name", "raw_timestamp_part_1",
                              "raw_timestamp_part_2", "cvtd_timestamp", "new_window", 
                              "num_window")
 
 trainingDataFrame_ <- obviousColumnReduction(trainingDataFrame_, obviousReducibleColumns)
-testingDataFrame_ <- obviousColumnReduction(testingDataFrame_, obviousReducibleColumns)
+# testingDataFrame_ <- obviousColumnReduction(testingDataFrame_, obviousReducibleColumns)
 
 testingDataFrame_ <- rationalizeFactorColumns(obviousColumnReduction(trainingDataFrame_, c(predicteeColumn)), testingDataFrame_)
+
+nzv <- nearZeroVar(trainingDataFrame_, saveMetrics=TRUE)
+trainingDataFrame__ <- trainingDataFrame_[, !nzv$nzv] # No further reduction possible
 
 ############################################################
 ## M A I N #################################################
@@ -92,6 +95,15 @@ sampleData <- trainingDataFrame_[sampleIndexes, ]
 sampleTest <- trainingDataFrame_[c(100:200), ]
 sum(complete.cases(sampleData)) == nrow(sampleData)
 
-modelFit <- train(classe ~ ., method="rf", data=sampleData)
+# PARALLEL PROCESSING
+loadOrInstallPackage("parallel", FALSE)
+loadOrInstallPackage("doParallel", FALSE)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+fitControl <- trainControl(method="cv", number=3, allowParallel=TRUE)
+
+modelFit <- train(classe ~ ., method="rf", data=sampleData, trControl=fitControl)
+stopCluster(cluster)
+
 predictions<-predict(modelFit, sampleTest)
 confusionMatrix(sampleTest$classe, predictions)
