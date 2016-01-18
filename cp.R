@@ -4,16 +4,15 @@
 downloadUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/"
 trainingDataFile <- "pml-training.csv"
 testingDataFile <- "pml-testing.csv"
-predicteeColumn <- "classe"
 
 ############################################################
 ## F U N C T I O N S #######################################
 ############################################################
 downloadFile <- function(url, file, destination="./") {
-  if (file.exists(paste(destination, file, sep=""))) return
-  
-  download.file(url=paste(url, file, sep=""), 
-                dest=paste(destination, file, sep=""), method="curl")
+  if (!file.exists(paste(destination, file, sep=""))) {
+      download.file(url=paste(url, file, sep=""), 
+                    dest=paste(destination, file, sep=""), method="curl")
+  }
 }
 
 loadOrInstallPackage <- function(packageName, ret=TRUE) {
@@ -56,54 +55,77 @@ readCsv <- function(pathToFile, headerFlag=TRUE, naStrings=c("NA")) {
 }
 
 ############################################################
+## S E E D #################################################
+############################################################
+set.seed(212121)
+
+############################################################
 ## G E T # S O U R C E #####################################
 ############################################################
 downloadFile(downloadUrl, trainingDataFile)
-# downloadFile(downloadUrl, testingDataFile) # Not required
+downloadFile(downloadUrl, testingDataFile)
 
 ############################################################
 ## P A R S I N G ###########################################
 ############################################################
 naStrings <- c("NA", "#DIV/0!", " ", "")
 trainingDataFrame <- readCsv(trainingDataFile, TRUE, naStrings)
-# testingDataFrame <- readCsv(testingDataFile, TRUE, naStrings)
+testingDataFrame <- readCsv(testingDataFile, TRUE, naStrings)
 
-trainingDataFrame_ <- purgeNAColumns(trainingDataFrame)
-# testingDataFrame_ <- purgeNAColumns(testingDataFrame)
+trainingDataFrame <- purgeNAColumns(trainingDataFrame)
+testingDataFrame <- purgeNAColumns(testingDataFrame)
 
 obviousReducibleColumns <- c("X", "user_name", "raw_timestamp_part_1",
-                             "raw_timestamp_part_2", "cvtd_timestamp", "new_window", 
-                             "num_window")
+                             "raw_timestamp_part_2", "cvtd_timestamp",
+                             "new_window", "num_window")
 
-trainingDataFrame_ <- obviousColumnReduction(trainingDataFrame_, obviousReducibleColumns)
-# testingDataFrame_ <- obviousColumnReduction(testingDataFrame_, obviousReducibleColumns)
-
-testingDataFrame_ <- rationalizeFactorColumns(obviousColumnReduction(trainingDataFrame_, c(predicteeColumn)), testingDataFrame_)
-
-nzv <- nearZeroVar(trainingDataFrame_, saveMetrics=TRUE)
-trainingDataFrame__ <- trainingDataFrame_[, !nzv$nzv] # No further reduction possible
+trainingDataFrame <- obviousColumnReduction(trainingDataFrame, 
+                                             obviousReducibleColumns)
+testingDataFrame <- obviousColumnReduction(testingDataFrame, 
+                                           obviousReducibleColumns)
 
 ############################################################
-## M A I N #################################################
+## T R A I N I N G # N T E S T I N G # D A T A S E T #######
+############################################################
+inTrain <- createDataPartition(y=trainingDataFrame$classe, p=0.6, list=FALSE)
+training <- trainingDataFrame[inTrain, ]
+testing <- trainingDataFrame[-inTrain, ]
+
+############################################################
+## M O D E L S #############################################
 ############################################################
 loadOrInstallPackage("caret", FALSE)
-
-set.seed(19622)
-
-sampleIndexes <- sample(1:nrow(trainingDataFrame_), 100)
-sampleData <- trainingDataFrame_[sampleIndexes, ]
-sampleTest <- trainingDataFrame_[c(100:200), ]
-sum(complete.cases(sampleData)) == nrow(sampleData)
-
-# PARALLEL PROCESSING
+loadOrInstallPackage("rpart", FALSE)
+loadOrInstallPackage("randomForest", FALSE)
 loadOrInstallPackage("parallel", FALSE)
 loadOrInstallPackage("doParallel", FALSE)
-cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
-registerDoParallel(cluster)
-fitControl <- trainControl(method="cv", number=3, allowParallel=TRUE)
 
-modelFit <- train(classe ~ ., method="rf", data=sampleData, trControl=fitControl)
+# PARALLEL PROCESSING
+cluster <- makeCluster(detectCores() -1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+fitControl <- trainControl(method="cv", number=5, allowParallel=TRUE)
+
+modelFitRandomForest <- train(classe ~ ., method="rf", data=training, trControl=fitControl)
+
+predictionRandomForest <- predict(modelFitRandomForest, testing)
+confusionMatrix(testing$classe, predictionRandomForest)
+
+modelFitDecisionTree <- train(classe ~ ., method="rpart", data=training, trControl=fitControl)
+predictionDecisionTree <- predict(modelFitDecisionTree, testing)
+confusionMatrix(testing$classe, predictionDecisionTree)
+
 stopCluster(cluster)
 
-predictions<-predict(modelFit, sampleTest)
-confusionMatrix(sampleTest$classe, predictions)
+############################################################
+## P R E D I C T ###########################################
+############################################################
+
+############################################################
+## A P P E N D I X #########################################
+############################################################
+loadOrInstallPackage("corrplot", FALSE)
+corrPlot <- cor(trainingDataFrame[, -length(names(trainingDataFrame))])
+corrplot(corrPlot, method="color")
+
+loadOrInstallPackage("rpart.plot", FALSE)
+prp(modelFitDecisionTree$finalModel)
