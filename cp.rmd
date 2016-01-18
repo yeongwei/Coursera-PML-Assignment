@@ -1,0 +1,23 @@
+---
+title: "Practical Machine Learning Project - Predict Movement Analysis Report"
+author: "YeongWei"
+date: "Tuesday, January 19, 2016"
+output: html_document
+---
+
+# Introduction
+
+Devices such as *Jawbone UP*, *Nike FuelBand* and *Fitbit* are capable of collecting mass amount of body movement data relatively inexpensively. The data used are collected from 6 participants volunteered in performing barbell lifts in 6 different ways (denoted by alphabets as class). The main object of this project is to build a prediction model based on the data mentioned, then to predict the class (outcome) of a given testing data set. Information of the experiment can be found at [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
+
+# Functions
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
