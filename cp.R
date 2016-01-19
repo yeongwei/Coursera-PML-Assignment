@@ -19,13 +19,9 @@ loadOrInstallPackage <- function(packageName, ret=TRUE) {
   findPackage <- function(packageName)
     packageName %in% rownames(installed.packages())
   
-  # If not found then install
   if (!findPackage(packageName)) install.packages(packageName)
-  
-  # If found then load to environment
-  if (findPackage(packageName)) library(packageName, character.only=TRUE)
-  
-  # TRUE - installed / loaded, FASLE - possibly wrong package name
+  if (findPackage(packageName)) 
+    suppressWarnings(suppressMessages(library(packageName, character.only=TRUE)))
   if (ret) found
 }
 
@@ -53,6 +49,15 @@ rationalizeFactorColumns <- function(dataFrame1, dataFrame2) {
 readCsv <- function(pathToFile, headerFlag=TRUE, naStrings=c("NA")) {
   read.csv(file=pathToFile, header=headerFlag, na.strings=naStrings)
 }
+
+############################################################
+## L I B R A R Y ###########################################
+############################################################
+loadOrInstallPackage("caret", FALSE)
+loadOrInstallPackage("rpart", FALSE)
+loadOrInstallPackage("randomForest", FALSE)
+loadOrInstallPackage("parallel", FALSE)
+loadOrInstallPackage("doParallel", FALSE)
 
 ############################################################
 ## S E E D #################################################
@@ -94,11 +99,6 @@ testing <- trainingDataFrame[-inTrain, ]
 ############################################################
 ## M O D E L S #############################################
 ############################################################
-loadOrInstallPackage("caret", FALSE)
-loadOrInstallPackage("rpart", FALSE)
-loadOrInstallPackage("randomForest", FALSE)
-loadOrInstallPackage("parallel", FALSE)
-loadOrInstallPackage("doParallel", FALSE)
 
 # PARALLEL PROCESSING
 cluster <- makeCluster(detectCores() -1) # convention to leave 1 core for OS
@@ -106,19 +106,33 @@ registerDoParallel(cluster)
 fitControl <- trainControl(method="cv", number=5, allowParallel=TRUE)
 
 modelFitRandomForest <- train(classe ~ ., method="rf", data=training, trControl=fitControl)
-
 predictionRandomForest <- predict(modelFitRandomForest, testing)
-confusionMatrix(testing$classe, predictionRandomForest)
+cmRandomForest <- confusionMatrix(testing$classe, predictionRandomForest)
 
 modelFitDecisionTree <- train(classe ~ ., method="rpart", data=training, trControl=fitControl)
 predictionDecisionTree <- predict(modelFitDecisionTree, testing)
-confusionMatrix(testing$classe, predictionDecisionTree)
+cmDecisionTree <- confusionMatrix(testing$classe, predictionDecisionTree)
 
 stopCluster(cluster)
 
 ############################################################
+## E V A L U A T I O N #####################################
+############################################################
+names(cmDecisionTree)
+cmDecisionTree$overall
+computeFunc <- function (value) {
+  round((1 - as.numeric(value))*100, 2)
+}
+percentagize <- function(value, func) {
+  paste(func(value), "%")
+}
+percentagize(cmDecisionTree$overall[1], computeFunc)
+
+############################################################
 ## P R E D I C T ###########################################
 ############################################################
+pred <- predict(modelFitRandomForest, testingDataFrame)
+pred
 
 ############################################################
 ## A P P E N D I X #########################################

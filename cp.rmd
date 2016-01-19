@@ -2,22 +2,274 @@
 title: "Practical Machine Learning Project - Predict Movement Analysis Report"
 author: "YeongWei"
 date: "Tuesday, January 19, 2016"
-output: html_document
+output: 
+  html_document:
+        fig_height: 9
+        fig_width: 9
 ---
 
 # Introduction
 
-Devices such as *Jawbone UP*, *Nike FuelBand* and *Fitbit* are capable of collecting mass amount of body movement data relatively inexpensively. The data used are collected from 6 participants volunteered in performing barbell lifts in 6 different ways (denoted by alphabets as class). The main object of this project is to build a prediction model based on the data mentioned, then to predict the class (outcome) of a given testing data set. Information of the experiment can be found at [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
+Devices such as *Jawbone UP*, *Nike FuelBand* and *Fitbit* are capable of collecting mass amount of body movement data relatively inexpensively. The data used are collected from 6 participants volunteered in performing barbell lifts in 6 different ways (each denoted by alphabet treated for classification). The main object of this project is to build a prediction model based on the data mentioned, then to predict the classification (outcome) based on a given testing data set. 
 
-# Functions
+The classifications / outcomes are as below,
+
+1. Class A - exactly according to the specification
+2. Class B - throwing the elbows to the front
+3. Class C - lifting the dumbbell only halfway
+4. Class D - lowering the dumbbell only halfway
+5. Class E - throwing the hips to the front
+
+More information of the experiment can be found at [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
+
+# User Defined Function
+
+The section consist the various user defined function definitions with descriptions that are used in the [modeling](#modeling) section. The purpose is to make the source code in modeling](#modeling) concise.
+
+### downloadFile
+
+If file is not found in destination path then proceed to download.
 ```{r}
-summary(cars)
+downloadFile <- function(url, file, destination="./") {
+  if (!file.exists(paste(destination, file, sep=""))) {
+      download.file(url=paste(url, file, sep=""), 
+                    dest=paste(destination, file, sep=""), method="curl")
+  }
+}
+```
+### loadOrInstallPackage
+
+If package is not installed then proceed to installation then followed by loading into environment.
+```{r}
+loadOrInstallPackage <- function(packageName, ret=TRUE) {
+  findPackage <- function(packageName)
+    packageName %in% rownames(installed.packages())
+  
+  if (!findPackage(packageName)) install.packages(packageName)
+  if (findPackage(packageName)) 
+    suppressWarnings(suppressMessages(library(packageName, character.only=TRUE)))
+  if (ret) found
+}
 ```
 
-You can also embed plots, for example:
+### purgeNAColumns
 
-```{r, echo=FALSE}
-plot(cars)
+If column has 80% or more of *NA* then drop column.
+```{r}
+purgeNAColumns <- function(dataFrame, purgableThreshold=0.8) {
+  dataFrame[, ! colSums(is.na(dataFrame)) / nrow(dataFrame) >= purgableThreshold]
+}
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### obviousColumnReduction
+
+Drop columns based on column names.
+```{r}
+obviousColumnReduction <- function(dataFrame, columns) {
+  dataFrame[, ! (names(dataFrame) %in% columns)]
+}
+```
+
+### rationalizeFactorColumns
+
+If a column in *dataFrame1* is of type *factor* then make the same column in *dataFrame2* as *factor*.
+```{r}
+rationalizeFactorColumns <- function(dataFrame1, dataFrame2) {
+  for (colName in names(dataFrame1)) {
+    if (is.factor(dataFrame1[, colName])) {
+      dataFrame2[, colName] <- as.factor(dataFrame2[, colName])
+    }
+  }
+  dataFrame2
+}
+```
+
+### readCsv
+
+A wraper for *read.csv*.
+```{r}
+readCsv <- function(pathToFile, headerFlag=TRUE, naStrings=c("NA")) {
+  read.csv(file=pathToFile, header=headerFlag, na.strings=naStrings)
+}
+```
+
+# Library
+
+This section attempts to load the required packages with [`loadOrInstallPackage`](#loadorinstallpackage).
+```{r}
+loadOrInstallPackage("caret", FALSE)
+loadOrInstallPackage("rpart", FALSE)
+loadOrInstallPackage("randomForest", FALSE)
+loadOrInstallPackage("parallel", FALSE)
+loadOrInstallPackage("doParallel", FALSE)
+loadOrInstallPackage("corrplot", FALSE)
+loadOrInstallPackage("rpart.plot", FALSE)
+```
+# Seed
+
+This section attempts to set the `seed` value.
+```{r}
+set.seed(212121)
+```
+
+# Data Processing
+
+This section attempts to retrieve and prepare the data.
+```{r}
+downloadUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/"
+trainingDataFile <- "pml-training.csv"
+testingDataFile <- "pml-testing.csv"
+```
+
+## Downloading Data
+
+This section attempts to download CSV files with [`downloadFile`](#downloadfile).
+```{r}
+downloadFile(downloadUrl, trainingDataFile)
+downloadFile(downloadUrl, testingDataFile)
+```
+
+## Cleaning Data
+
+This section attempts clean the downloaded data.
+
+1. Assuming some values to be *NA* with the [`readCsv`](#readcsv) evaluation
+```{r}
+naStrings <- c("NA", "#DIV/0!", " ", "")
+trainingDataFrame <- readCsv(trainingDataFile, TRUE, naStrings)
+testingDataFrame <- readCsv(testingDataFile, TRUE, naStrings)
+```
+
+2. Dropping columns with values 80% are *NA* with [`purgeNAColumns`](#purgenacolumns)
+```{r}
+trainingDataFrame <- purgeNAColumns(trainingDataFrame)
+testingDataFrame <- purgeNAColumns(testingDataFrame)
+```
+
+3. Droping the unnecessary columns with [`obviousColumnReduction`](#obviouscolumnreduction)
+```{r}
+obviousReducibleColumns <- c("X", "user_name", "raw_timestamp_part_1",
+                             "raw_timestamp_part_2", "cvtd_timestamp",
+                             "new_window", "num_window")
+
+trainingDataFrame <- obviousColumnReduction(trainingDataFrame, 
+                                             obviousReducibleColumns)
+testingDataFrame <- obviousColumnReduction(testingDataFrame, 
+                                           obviousReducibleColumns)
+
+```
+# Modeling
+
+This sections attempts to build the 2 prediction models based on *Decision Tree* and *Random Forest* algorithm.
+
+## Create Training and Testing Dataset
+
+This section attemtps to construct the training(60%) and testing(40%) dataset from the [cleaned data](#cleaningdata).
+```{r}
+inTrain <- createDataPartition(y=trainingDataFrame$classe, p=0.6, list=FALSE)
+training <- trainingDataFrame[inTrain, ]
+testing <- trainingDataFrame[-inTrain, ]
+```
+
+## Create Control Parameter for Model Training
+
+The control parameter below attempts to exploit the parallel processing feature by creating processing cluster based on the number of CPU cores available.
+```{r}
+cluster <- makeCluster(detectCores() -1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+fitControl <- trainControl(method="cv", number=5, allowParallel=TRUE)
+```
+## Prediction Model with Decision Tree
+
+Training the model with the *rpart* method.
+```{r cache=TRUE}
+modelFitDecisionTree <- train(classe ~ ., method="rpart", data=training, trControl=fitControl)
+predictionDecisionTree <- predict(modelFitDecisionTree, testing)
+cmDecisionTree <- confusionMatrix(testing$classe, predictionDecisionTree)
+cmDecisionTree
+```
+
+## Prediction Model with Random Forest
+
+Training the model with *rf* method.
+```{r cache=TRUE}
+modelFitRandomForest <- train(classe ~ ., method="rf", data=training, trControl=fitControl)
+predictionRandomForest <- predict(modelFitRandomForest, testing)
+cmRandomForest <- confusionMatrix(testing$classe, predictionRandomForest)
+cmRandomForest
+```
+
+```{r echo=FALSE}
+stopCluster(cluster)
+```
+
+## Analysis between Prediction Models
+
+This section evaluates the overall accuracy and estimate the out-of-sample error. 
+
+Helper function below computes the estimated out-of-sample error,
+```{r}
+computeFunc <- function (value) {
+  1 - as.numeric(value)
+}
+```
+
+Helper function returns the argument,
+```{r}
+retFunc <- function(arg) {
+  arg
+}
+```
+
+Helper function below returns the percentagized string,
+```{r}
+percentagize <- function(value, func) {
+  paste(round(func(value) * 100, 2), "%")
+}
+```
+
+### Decision Tree
+1. The overall accuracy is,
+```{r}
+percentagize(cmDecisionTree$overall[1], retFunc)
+```
+
+2. The estimated out-of-sample error is,
+```{r}
+percentagize(cmDecisionTree$overall[1], computeFunc)
+```
+
+### Random Forest
+1. The overall accuracy is,
+```{r}
+percentagize(cmRandomForest$overall[1], retFunc)
+```
+
+2. The estimated out-of-sample error is,
+```{r}
+percentagize(cmRandomForest$overall[1], computeFunc)
+```
+# Conclusion / Result
+
+Based on the [Modeling](#modeling) section, the prediction model with [Random Forest](#random-forest) is better than the [Decision Tree](#decision-tree) algorithm.
+
+Therefore the [Random Forest](#randomforest) prediction model is used to predict the outcome (classe column) for the `testingDataFrame` test data from the [Cleaning Data](#cleaning-data) section.
+
+```{r}
+prediction <- predict(modelFitRandomForest, testingDataFrame)
+predictionDf <- data.frame(index=c(1: length(prediction)), prediction=prediction)
+predictionDf
+```
+
+# Appendix
+
+1. Data exploration effort for `trainingDataFrame` from Cleaning Data](#cleaning-data) section for correlation hints.
+```{r fig.width=10}
+corrPlot <- cor(trainingDataFrame[, -length(names(trainingDataFrame))])
+corrplot(corrPlot, method="color")
+```
+
+2. Decision Tree visualization for[Decision Tree](#decision-tree) prediction model.
+```{r}
+prp(modelFitDecisionTree$finalModel)
+```
