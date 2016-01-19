@@ -10,7 +10,7 @@ output:
 
 # Introduction
 
-Devices such as *Jawbone UP*, *Nike FuelBand* and *Fitbit* are capable of collecting mass amount of body movement data relatively inexpensively. The data used are collected from 6 participants volunteered in performing barbell lifts in 6 different ways (each denoted by alphabet treated for classification). The main object of this project is to build a prediction model based on the data mentioned, then to predict the classification (outcome) based on a given testing data set. 
+Devices such as *Jawbone UP*, *Nike FuelBand* and *Fitbit* are capable of collecting mass amount of body movement data relatively inexpensively. The data used  here are collected from 6 volunteered participants for performing barbell lifts in 6 different ways (each denoted by alphabet and treated as classification). The main objective of this project is to build prediction models based on the data mentioned, then use them to predict the classification (outcome) based on a given testing data set. 
 
 The classifications / outcomes are as below,
 
@@ -20,11 +20,11 @@ The classifications / outcomes are as below,
 4. Class D - lowering the dumbbell only halfway
 5. Class E - throwing the hips to the front
 
-More information of the experiment can be found at [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
+More information about the experiment can be found at [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har).
 
 # User Defined Function
 
-The section consist the various user defined function definitions with descriptions that are used in the [modeling](#modeling) section. The purpose is to make the source code in [modeling](#modeling) concise.
+The section consist the various user defined function definitions and descriptions that are used in the [modeling](#modeling) section. The purpose is to make the source code in [modeling](#modeling) section more concise.
 
 ### downloadFile
 
@@ -54,7 +54,7 @@ loadOrInstallPackage <- function(packageName, ret=TRUE) {
 
 ### purgeNAColumns
 
-If column has 80% or more of *NA* then drop column.
+If column has 80% or more of *NA* values then drop column.
 ```{r}
 purgeNAColumns <- function(dataFrame, purgableThreshold=0.8) {
   dataFrame[, ! colSums(is.na(dataFrame)) / nrow(dataFrame) >= purgableThreshold]
@@ -86,7 +86,7 @@ rationalizeFactorColumns <- function(dataFrame1, dataFrame2) {
 
 ### readCsv
 
-A wraper for *read.csv*.
+A wrapper for *read.csv*.
 ```{r}
 readCsv <- function(pathToFile, headerFlag=TRUE, naStrings=c("NA")) {
   read.csv(file=pathToFile, header=headerFlag, na.strings=naStrings)
@@ -133,20 +133,20 @@ downloadFile(downloadUrl, testingDataFile)
 
 This section attempts clean the downloaded data.
 
-1. Assuming some values to be *NA* with the [`readCsv`](#readcsv) evaluation
+1. Assuming some values to be *NA* with the [`readCsv`](#readcsv) evaluation.
 ```{r}
 naStrings <- c("NA", "#DIV/0!", " ", "")
 trainingDataFrame <- readCsv(trainingDataFile, TRUE, naStrings)
 testingDataFrame <- readCsv(testingDataFile, TRUE, naStrings)
 ```
 
-2. Dropping columns with values 80% are *NA* with [`purgeNAColumns`](#purgenacolumns)
+2. Dropping columns that has 80% of *NA* values with [`purgeNAColumns`](#purgenacolumns).
 ```{r}
 trainingDataFrame <- purgeNAColumns(trainingDataFrame)
 testingDataFrame <- purgeNAColumns(testingDataFrame)
 ```
 
-3. Droping the unnecessary columns with [`obviousColumnReduction`](#obviouscolumnreduction)
+3. Droping unnecessary columns with [`obviousColumnReduction`](#obviouscolumnreduction).
 ```{r}
 obviousReducibleColumns <- c("X", "user_name", "raw_timestamp_part_1",
                              "raw_timestamp_part_2", "cvtd_timestamp",
@@ -164,7 +164,7 @@ This sections attempts to build 2 prediction models based on *Decision Tree* and
 
 ## Create Training and Testing Dataset
 
-This section attemtps to construct the training(60%) and testing(40%) dataset from the [cleaned data](#cleaningdata).
+This section attemtps to construct the training(60%) and testing(40%) dataset based on data from the [cleaned data](#cleaningdata).
 ```{r}
 inTrain <- createDataPartition(y=trainingDataFrame$classe, p=0.6, list=FALSE)
 training <- trainingDataFrame[inTrain, ]
@@ -175,7 +175,7 @@ testing <- trainingDataFrame[-inTrain, ]
 
 The control parameter below attempts to exploit the parallel processing feature by creating processing cluster based on the number of CPU cores available.
 ```{r}
-cluster <- makeCluster(detectCores() -1) # convention to leave 1 core for OS
+cluster <- makeCluster(detectCores() -1)
 registerDoParallel(cluster)
 fitControl <- trainControl(method="cv", number=5, allowParallel=TRUE)
 ```

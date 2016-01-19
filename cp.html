@@ -69,7 +69,7 @@ img {
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>Devices such as <em>Jawbone UP</em>, <em>Nike FuelBand</em> and <em>Fitbit</em> are capable of collecting mass amount of body movement data relatively inexpensively. The data used are collected from 6 participants volunteered in performing barbell lifts in 6 different ways (each denoted by alphabet treated for classification). The main object of this project is to build a prediction model based on the data mentioned, then to predict the classification (outcome) based on a given testing data set.</p>
+<p>Devices such as <em>Jawbone UP</em>, <em>Nike FuelBand</em> and <em>Fitbit</em> are capable of collecting mass amount of body movement data relatively inexpensively. The data used here are collected from 6 volunteered participants for performing barbell lifts in 6 different ways (each denoted by alphabet and treated as classification). The main objective of this project is to build prediction models based on the data mentioned, then use them to predict the classification (outcome) based on a given testing data set.</p>
 <p>The classifications / outcomes are as below,</p>
 <ol style="list-style-type: decimal">
 <li>Class A - exactly according to the specification</li>
@@ -78,11 +78,11 @@ img {
 <li>Class D - lowering the dumbbell only halfway</li>
 <li>Class E - throwing the hips to the front</li>
 </ol>
-<p>More information of the experiment can be found at <a href="http://groupware.les.inf.puc-rio.br/har"><a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a></a>.</p>
+<p>More information about the experiment can be found at <a href="http://groupware.les.inf.puc-rio.br/har"><a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a></a>.</p>
 </div>
 <div id="user-defined-function" class="section level1">
 <h1>User Defined Function</h1>
-<p>The section consist the various user defined function definitions with descriptions that are used in the <a href="#modeling">modeling</a> section. The purpose is to make the source code in <a href="#modeling">modeling</a> concise.</p>
+<p>The section consist the various user defined function definitions and descriptions that are used in the <a href="#modeling">modeling</a> section. The purpose is to make the source code in <a href="#modeling">modeling</a> section more concise.</p>
 <div id="downloadfile" class="section level3">
 <h3>downloadFile</h3>
 <p>If file is not found in destination path then proceed to download.</p>
@@ -108,7 +108,7 @@ img {
 </div>
 <div id="purgenacolumns" class="section level3">
 <h3>purgeNAColumns</h3>
-<p>If column has 80% or more of <em>NA</em> then drop column.</p>
+<p>If column has 80% or more of <em>NA</em> values then drop column.</p>
 <pre class="r"><code>purgeNAColumns &lt;- function(dataFrame, purgableThreshold=0.8) {
   dataFrame[, ! colSums(is.na(dataFrame)) / nrow(dataFrame) &gt;= purgableThreshold]
 }</code></pre>
@@ -134,7 +134,7 @@ img {
 </div>
 <div id="readcsv" class="section level3">
 <h3>readCsv</h3>
-<p>A wraper for <em>read.csv</em>.</p>
+<p>A wrapper for <em>read.csv</em>.</p>
 <pre class="r"><code>readCsv &lt;- function(pathToFile, headerFlag=TRUE, naStrings=c(&quot;NA&quot;)) {
   read.csv(file=pathToFile, header=headerFlag, na.strings=naStrings)
 }</code></pre>
@@ -172,18 +172,18 @@ downloadFile(downloadUrl, testingDataFile)</code></pre>
 <h2>Cleaning Data</h2>
 <p>This section attempts clean the downloaded data.</p>
 <ol style="list-style-type: decimal">
-<li>Assuming some values to be <em>NA</em> with the <a href="#readcsv"><code>readCsv</code></a> evaluation</li>
+<li>Assuming some values to be <em>NA</em> with the <a href="#readcsv"><code>readCsv</code></a> evaluation.</li>
 </ol>
 <pre class="r"><code>naStrings &lt;- c(&quot;NA&quot;, &quot;#DIV/0!&quot;, &quot; &quot;, &quot;&quot;)
 trainingDataFrame &lt;- readCsv(trainingDataFile, TRUE, naStrings)
 testingDataFrame &lt;- readCsv(testingDataFile, TRUE, naStrings)</code></pre>
 <ol start="2" style="list-style-type: decimal">
-<li>Dropping columns with values 80% are <em>NA</em> with <a href="#purgenacolumns"><code>purgeNAColumns</code></a></li>
+<li>Dropping columns that has 80% of <em>NA</em> values with <a href="#purgenacolumns"><code>purgeNAColumns</code></a>.</li>
 </ol>
 <pre class="r"><code>trainingDataFrame &lt;- purgeNAColumns(trainingDataFrame)
 testingDataFrame &lt;- purgeNAColumns(testingDataFrame)</code></pre>
 <ol start="3" style="list-style-type: decimal">
-<li>Droping the unnecessary columns with <a href="#obviouscolumnreduction"><code>obviousColumnReduction</code></a></li>
+<li>Droping unnecessary columns with <a href="#obviouscolumnreduction"><code>obviousColumnReduction</code></a>.</li>
 </ol>
 <pre class="r"><code>obviousReducibleColumns &lt;- c(&quot;X&quot;, &quot;user_name&quot;, &quot;raw_timestamp_part_1&quot;,
                              &quot;raw_timestamp_part_2&quot;, &quot;cvtd_timestamp&quot;,
@@ -200,7 +200,7 @@ testingDataFrame &lt;- obviousColumnReduction(testingDataFrame,
 <p>This sections attempts to build 2 prediction models based on <em>Decision Tree</em> and <em>Random Forest</em> algorithm.</p>
 <div id="create-training-and-testing-dataset" class="section level2">
 <h2>Create Training and Testing Dataset</h2>
-<p>This section attemtps to construct the training(60%) and testing(40%) dataset from the <a href="#cleaningdata">cleaned data</a>.</p>
+<p>This section attemtps to construct the training(60%) and testing(40%) dataset based on data from the <a href="#cleaningdata">cleaned data</a>.</p>
 <pre class="r"><code>inTrain &lt;- createDataPartition(y=trainingDataFrame$classe, p=0.6, list=FALSE)
 training &lt;- trainingDataFrame[inTrain, ]
 testing &lt;- trainingDataFrame[-inTrain, ]</code></pre>
@@ -208,7 +208,7 @@ testing &lt;- trainingDataFrame[-inTrain, ]</code></pre>
 <div id="create-control-parameter-for-model-training" class="section level2">
 <h2>Create Control Parameter for Model Training</h2>
 <p>The control parameter below attempts to exploit the parallel processing feature by creating processing cluster based on the number of CPU cores available.</p>
-<pre class="r"><code>cluster &lt;- makeCluster(detectCores() -1) # convention to leave 1 core for OS
+<pre class="r"><code>cluster &lt;- makeCluster(detectCores() -1)
 registerDoParallel(cluster)
 fitControl &lt;- trainControl(method=&quot;cv&quot;, number=5, allowParallel=TRUE)</code></pre>
 </div>
