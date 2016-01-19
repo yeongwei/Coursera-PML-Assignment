@@ -1,5 +1,5 @@
 ---
-title: "Practical Machine Learning Project - Predict Movement Analysis Report"
+title: "Practical Machine Learning Project - Predict Body Movement Analysis Report"
 author: "YeongWei"
 date: "Tuesday, January 19, 2016"
 output: 
@@ -24,7 +24,7 @@ More information of the experiment can be found at [http://groupware.les.inf.puc
 
 # User Defined Function
 
-The section consist the various user defined function definitions with descriptions that are used in the [modeling](#modeling) section. The purpose is to make the source code in modeling](#modeling) concise.
+The section consist the various user defined function definitions with descriptions that are used in the [modeling](#modeling) section. The purpose is to make the source code in [modeling](#modeling) concise.
 
 ### downloadFile
 
@@ -160,7 +160,7 @@ testingDataFrame <- obviousColumnReduction(testingDataFrame,
 ```
 # Modeling
 
-This sections attempts to build the 2 prediction models based on *Decision Tree* and *Random Forest* algorithm.
+This sections attempts to build 2 prediction models based on *Decision Tree* and *Random Forest* algorithm.
 
 ## Create Training and Testing Dataset
 
@@ -257,6 +257,10 @@ Therefore the [Random Forest](#randomforest) prediction model is used to predict
 
 ```{r}
 prediction <- predict(modelFitRandomForest, testingDataFrame)
+```
+
+The predicted outcomes are arranged as follows,
+```{r}
 predictionDf <- data.frame(index=c(1: length(prediction)), prediction=prediction)
 predictionDf
 ```
@@ -269,7 +273,7 @@ corrPlot <- cor(trainingDataFrame[, -length(names(trainingDataFrame))])
 corrplot(corrPlot, method="color")
 ```
 
-2. Decision Tree visualization for[Decision Tree](#decision-tree) prediction model.
+2. Decision Tree visualization for [Decision Tree](#decision-tree) prediction model.
 ```{r}
 prp(modelFitDecisionTree$finalModel)
 ```
