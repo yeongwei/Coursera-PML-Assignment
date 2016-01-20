@@ -267,7 +267,7 @@ predictionDf
 
 # Appendix
 
-1. Data exploration effort for `trainingDataFrame` from Cleaning Data](#cleaning-data) section for correlation hints.
+1. Data exploration effort for `trainingDataFrame` from [Cleaning Data](#cleaning-data) section for correlation hints.
 ```{r fig.width=10}
 corrPlot <- cor(trainingDataFrame[, -length(names(trainingDataFrame))])
 corrplot(corrPlot, method="color")
